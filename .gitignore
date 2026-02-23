@@ -22,3 +22,8 @@ pnpm-debug.log*
 # generated AI context files
 public/llms.txt
 public/llms-full.txt
+
+# generated docs navigation
+src/sidebar-modules.json
+src/content/docs/modules/
+
