@@ -7,17 +7,15 @@ const __dirname = path.dirname(__filename);
 
 // Paths
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const MODULES_DIR = path.resolve(REPO_ROOT, 'modules');
 const DOCS_CONTENT_DIR = path.resolve(__dirname, '../src/content/docs');
 const MODULES_OUT_DIR = path.join(DOCS_CONTENT_DIR, 'modules');
 const SIDEBAR_FILE = path.resolve(__dirname, '../src/sidebar-modules.json');
 
-console.info(`Scanning modules in: ${MODULES_DIR}`);
-
-if (!fs.existsSync(MODULES_DIR)) {
-  console.error('Modules directory not found!');
-  process.exit(1);
-}
+const SOURCES = [
+  { group: 'Backend Modules', dir: path.resolve(REPO_ROOT, 'apps/backend/modules') },
+  { group: 'Frontend Modules', dir: path.resolve(REPO_ROOT, 'apps/frontend/modules') },
+  { group: 'Core', dir: path.resolve(REPO_ROOT, 'core'), isSingle: true },
+];
 
 // Ensure output directory exists and is clean
 if (fs.existsSync(MODULES_OUT_DIR)) {
@@ -25,22 +23,56 @@ if (fs.existsSync(MODULES_OUT_DIR)) {
 }
 fs.mkdirSync(MODULES_OUT_DIR, { recursive: true });
 
-const modules = fs.readdirSync(MODULES_DIR).filter((name) => {
-  return fs.statSync(path.join(MODULES_DIR, name)).isDirectory();
-});
-
 interface SidebarEntry {
   label: string;
   autogenerate?: { directory: string };
   link?: string;
+  items?: SidebarEntry[];
 }
 
 const sidebarEntries: SidebarEntry[] = [];
 
-console.info(`Found ${modules.length} modules.`);
+for (const source of SOURCES) {
+  if (!fs.existsSync(source.dir)) {
+    console.warn(`Source directory not found: ${source.dir}`);
+    continue;
+  }
 
-for (const moduleName of modules) {
-  const modulePath = path.join(MODULES_DIR, moduleName);
+  const groupItems: SidebarEntry[] = [];
+
+  if (source.isSingle) {
+    const moduleName = source.group.toLowerCase();
+    processModule(source.dir, moduleName, groupItems);
+    if (groupItems.length > 0) {
+      sidebarEntries.push(groupItems[0]);
+    }
+  } else {
+    const modules = fs.readdirSync(source.dir).filter((name) => {
+      return fs.statSync(path.join(source.dir, name)).isDirectory();
+    });
+
+    console.info(`Found ${modules.length} modules in ${source.group}.`);
+
+    for (const moduleName of modules) {
+      const modulePath = path.join(source.dir, moduleName);
+      processModule(modulePath, moduleName, groupItems);
+    }
+
+    if (groupItems.length > 0) {
+      sidebarEntries.push({
+        label: source.group,
+        items: groupItems,
+      });
+    }
+  }
+}
+
+// Write sidebar config
+fs.writeFileSync(SIDEBAR_FILE, JSON.stringify(sidebarEntries, null, 2));
+
+console.info('Documentation aggregation complete.');
+
+function processModule(modulePath: string, moduleName: string, groupItems: SidebarEntry[]) {
   const docsPath = path.join(modulePath, 'docs');
   const readmePath = path.join(modulePath, 'README.md');
 
@@ -48,7 +80,7 @@ for (const moduleName of modules) {
   const hasReadme = fs.existsSync(readmePath);
 
   if (!hasDocs && !hasReadme) {
-    continue;
+    return;
   }
 
   console.info(`Processing ${moduleName}...`);
@@ -76,7 +108,7 @@ ${readmeContent}`;
     copyRecursive(docsPath, outDir);
 
     // 3. Generate Sidebar (Group)
-    sidebarEntries.push({
+    groupItems.push({
       label: moduleName,
       autogenerate: { directory: `modules/${moduleName}` },
     });
@@ -98,18 +130,13 @@ ${readmeContent}`;
       fs.writeFileSync(outFile, content);
 
       // Generate Sidebar (Link)
-      sidebarEntries.push({
+      groupItems.push({
         label: moduleName,
         link: `modules/${moduleName}`,
       });
     }
   }
 }
-
-// Write sidebar config
-fs.writeFileSync(SIDEBAR_FILE, JSON.stringify(sidebarEntries, null, 2));
-
-console.info('Documentation aggregation complete.');
 
 function copyRecursive(src: string, dest: string) {
   const stats = fs.statSync(src);
