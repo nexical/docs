@@ -1,7 +1,7 @@
 {
   "name": "@nexical/docs",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "dev": "npm run gather-docs && npm run generate-llms && astro dev",
     "start": "astro dev",
