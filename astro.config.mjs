@@ -13,7 +13,7 @@ export default defineConfig({
     starlight({
       title: meta.title,
       logo: {
-        src: '/logo.svg',
+        src: './src/assets/logo.svg',
       },
       favicon: '/favicon.svg',
       social: /** @type {any} */ (meta.social),
