@@ -19,7 +19,8 @@ pnpm-debug.log*
 .DS_Store
 
 # generated / aggregated files 
-src/sidebar-modules.json
+src/meta.json
+src/sidebar.json
 src/assets/
 src/content/docs/
 public/
