@@ -8,7 +8,7 @@ import meta from './src/meta.json';
 
 export default defineConfig({
   site: process.env.SITE,
-  base: process.env.BASE,
+  base: '/',
   integrations: [
     starlight({
       title: meta.title,
