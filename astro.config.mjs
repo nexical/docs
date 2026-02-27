@@ -3,44 +3,24 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
-import sidebarModules from './src/sidebar-modules.json';
+import sidebar from './src/sidebar.json';
+import meta from './src/meta.json';
 
 export default defineConfig({
   site: process.env.SITE,
   base: process.env.BASE,
   integrations: [
     starlight({
-      title: 'Nexical Ecosystem',
+      title: meta.title,
       logo: {
-        src: './src/assets/logo.svg',
+        src: '/logo.svg',
       },
       favicon: '/favicon.svg',
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/nexical/app-core' }],
+      social: /** @type {any} */ (meta.social),
       sidebar: [
-        {
-          label: 'Architecture',
-          autogenerate: { directory: 'architecture' },
-        },
-        {
-          label: 'Module Development',
-          autogenerate: { directory: 'module-dev' },
-        },
-        {
-          label: 'Core API',
-          autogenerate: { directory: 'core-api' },
-        },
-        {
-          label: 'Guides',
-          autogenerate: { directory: 'guides' },
-        },
-        {
-          label: 'UI System',
-          autogenerate: { directory: 'ui' },
-        },
-        {
-          label: 'Modules',
-          items: sidebarModules,
-        },
+        ...(meta.sidebar?.header || []),
+        ...sidebar,
+        ...(meta.sidebar?.footer || []),
       ],
     }),
   ],
