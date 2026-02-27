@@ -11,7 +11,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-
 # environment variables
 .env
 .env.production
@@ -19,11 +18,9 @@ pnpm-debug.log*
 # macOS-specific files
 .DS_Store
 
-# generated AI context files
-public/llms.txt
-public/llms-full.txt
-
-# generated docs navigation
+# generated / aggregated files 
 src/sidebar-modules.json
-src/content/docs/modules/
+src/assets/
+src/content/docs/
+public/
 
