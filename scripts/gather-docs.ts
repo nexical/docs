@@ -24,9 +24,14 @@ const SOURCES: { name: string; dir: string; isModuleDir?: boolean }[] = [
 ];
 
 /**
+ * Global map to track the original (prefixed) name for each clean name to maintain order.
+ */
+const orderMap = new Map<string, string>();
+
+/**
  * Utility to deep merge directories.
  */
-function deepMerge(src: string, dest: string, options: { exclude?: string[] } = {}) {
+function deepMerge(src: string, dest: string, options: { exclude?: string[]; stripPrefix?: boolean } = {}) {
   if (!fs.existsSync(src)) return;
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
 
@@ -35,11 +40,24 @@ function deepMerge(src: string, dest: string, options: { exclude?: string[] } = 
   for (const entry of entries) {
     if (options.exclude?.includes(entry.name)) continue;
 
+    let targetName = entry.name;
+    if (options.stripPrefix) {
+      const cleanName = entry.name.replace(/^\d+-/, '');
+      if (cleanName !== entry.name) {
+        // Track the original name for sorting purposes
+        if (!orderMap.has(cleanName) || entry.name < (orderMap.get(cleanName) || '')) {
+          orderMap.set(cleanName, entry.name);
+        }
+      }
+      targetName = cleanName;
+    }
+
     const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
+    const destPath = path.join(dest, targetName);
 
     if (entry.isDirectory()) {
-      deepMerge(srcPath, destPath, options);
+      // We only strip prefixes at the top-level of content docs
+      deepMerge(srcPath, destPath, { ...options, stripPrefix: false });
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -91,8 +109,8 @@ function aggregate() {
  * Merges a documentation source folder into the docs project.
  */
 function mergeSource(sourcePath: string) {
-  // 1. Content (excluding assets and public)
-  deepMerge(sourcePath, DOCS_CONTENT_DIR, { exclude: ['assets', 'public'] });
+  // 1. Content (stripping prefixes from top-level folders)
+  deepMerge(sourcePath, DOCS_CONTENT_DIR, { exclude: ['assets', 'public', 'meta.yaml'], stripPrefix: true });
 
   // 2. Assets
   const assetsPath = path.join(sourcePath, 'assets');
@@ -122,12 +140,14 @@ function generateSidebar() {
 
   const entries = fs.readdirSync(DOCS_CONTENT_DIR, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+    .sort((a, b) => {
+      // Use original names from orderMap to determine sort order
+      const originalA = orderMap.get(a.name) || a.name;
+      const originalB = orderMap.get(b.name) || b.name;
+      return originalA.localeCompare(originalB);
+    })
     .map(entry => {
-      // Strip numeric prefix (e.g., "01-") for the label
-      const cleanName = entry.name.replace(/^\d+-/, '');
-
-      const label = cleanName
+      const label = entry.name
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
